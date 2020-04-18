@@ -1,4 +1,4 @@
-﻿CREATE TABLE Clubs (
+CREATE TABLE Clubs (
     teamId              INT            NOT NULL        IDENTITY    PRIMARY KEY,
     playerId            INT            NOT NULL        foreign key references Players(playerId),
     managerId           INT            NOT NULL        foreign key references Manager(managerId),
@@ -12,13 +12,17 @@
 );
 
 CREATE TABLE PlayerStats (
-    playerId            INT            NOT NULL        IDENTITY   PRIMARY KEY,
-    firstName           VARCHAR(100)   NOT NULL,
-    lastName            VARCHAR(100)   NOT NULL,
+    playerStatsId       INT            NOT NULL        IDENTITY   PRIMARY KEY,
+    playerId            INT            NOT NULL        foreign key references Players(playerId),
+    assists             INT            NOT NULL,
+    appearances         INT            NOT NULL,
+    yellowCards         INT            NOT NULL,
+    redCards            INT            NOT NULL,
+    salary              INT            NOT NULL,
+    contractLength      INT            NOT NULL,
+    gamesMissed         INT            NOT NULL,
     number              INT            NOT NULL,
-    age                 INT            NOT NULL,
-    nationality         VARCHAR(100)   NOT NULL,
-    position            VARCHAR(100)   NOT NULL
+    goals               INT            NOT NULL
 );
 
 
