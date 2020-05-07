@@ -60,7 +60,7 @@ CREATE TABLE Players(
     age            INT			   NOT NULL,
     nationality    VARCHAR(100)            NOT NULL,
     position       VARCHAR(100)            NOT NULL,
-    IndividualId   INT            NOT NULL,
+    IndividualId   INT            NOT NULL
 );
 
 CREATE TABLE PlayerStats(	
@@ -71,7 +71,7 @@ CREATE TABLE PlayerStats(
 	yellowCards		INT			NOT NULL	default(0),
 	redCards		INT			NOT NULL	default(0),
 	salary			FLOAT			NOT NULL	default(0),
-	contractLength		VARCHAR(30)		NOT NULL	default(0),
+	contractLength	INT		NOT NULL	default(0), --MEASURED IN DAYS REMAINING
 	gamesMissed		INT			NOT NULL	default(0),
 	number			INT			NOT NULL	default(0),
 	goals			INT			NOT NULL	default(0)
@@ -86,7 +86,7 @@ GO
 --SELECT * FROM Cleats
 -- SELECT * FROM City
 -- SELECT * FROM Manager
-
+GO
 --============================================================= CREATE VIEWS
 -- Views based on grouping the league's entire set of players based on their nation
 -- England
@@ -123,15 +123,308 @@ GO
 
 --============================================================= CREATE STORED PROCEDURES
 
+/* =====================================================================
+
+	Name:           spAddUpdateDeletePlayer
+	Purpose:        Adds/Updates/Deletes a player to/from the database.
+
+======================================================================== */
+
+CREATE PROCEDURE spAddUpdateDeletePlayer
+	@playerId	  INT,
+	@delete		  BIT = 0,
+	@clubId		  INT,
+	@cleatId      INT,
+	@firstName    VARCHAR(100),
+	@lastName     VARCHAR(100),
+	@number       INT			,
+	@age          INT			,
+	@nationality  VARCHAR(100),
+	@position     VARCHAR(100),
+	@IndividualId INT    
+	
+AS BEGIN
+
+	BEGIN TRY
+		IF(@playerId = 0) BEGIN			--ADD PLAYER
+			INSERT	INTO Players(clubId,cleatId,firstName,lastName,number,age,nationality,position,IndividualId)
+					VALUES (@clubId,@cleatId,@firstName,@lastName,@number,@age,@nationality,@position,@IndividualId)
+					SELECT @@IDENTITY AS playerId,
+					[success] = CAST(1 AS BIT)
+
+		END ELSE IF (@delete = 1) BEGIN --delete player
+			IF NOT EXISTS (SELECT NULL FROM Players WHERE playerId = @playerId) BEGIN
+				SELECT [message] = 'No playerId found',
+					   [success] = CAST (0 AS BIT)
+			END ELSE BEGIN
+			
+				DELETE FROM Players WHERE playerId = @playerId
+				SELECT 0 AS playerId,
+						[success] = CAST(0 AS BIT)
+			END
+
+	END ELSE BEGIN		--UPDATE PLAYER
+		IF NOT EXISTS (SELECT NULL FROM Players WHERE playerId = @playerId) BEGIN
+			SELECT	[message] = 'player not found',
+					[success] = CAST(0 AS BIT)
+		END ELSE BEGIN
+			UPDATE Players
+			SET clubId    = @clubId,		 
+				cleatId	  = @cleatId,     
+				firstName = @firstName,   
+				lastName  = @lastName,    
+				number	  = @number,      
+				age		  = @age,         
+				nationality = @nationality, 
+				position    = @position,    
+				IndividualId= @IndividualId
+			WHERE playerId = @playerId
+			SELECT [success] = CAST(1 AS BIT)
+		END
+	END
+END TRY BEGIN CATCH
+	IF(@@TRANCOUNT > 0) ROLLBACK TRAN
+END CATCH
+IF(@@TRANCOUNT > 0) COMMIT TRAN
+END
 GO
 
+/* =====================================================================
+
+	Name:           spAddUpdateDeleteCleats
+	Purpose:        Adds/Updates/Deletes a cleat to/from the database.
+
+======================================================================== */
+
+CREATE PROCEDURE spAddUpdateDeleteCleats
+	@cleatId	  INT,
+	@delete		  BIT = 0,
+	@brand		  VARCHAR(100),
+	@model		  VARCHAR(100)
+AS BEGIN
+
+	BEGIN TRY
+		IF(@cleatId = 0) BEGIN			--ADD CLEAT
+			INSERT	INTO Cleats(brand,model)
+					VALUES (@brand,@model)
+					SELECT @@IDENTITY AS cleatId,
+					[success] = CAST(1 AS BIT)
+
+		END ELSE IF (@delete = 1) BEGIN --delete cleat
+			IF NOT EXISTS (SELECT NULL FROM Cleats WHERE cleatId = @cleatId) BEGIN
+				SELECT [message] = 'No cleatId found',
+					   [success] = CAST (0 AS BIT)
+			END ELSE BEGIN
+			
+				DELETE Cleats WHERE cleatId = @cleatId
+				SELECT 0 AS cleatId,
+						[success] = CAST(0 AS BIT)
+			END
+	END ELSE BEGIN		--UPDATE cleat
+		IF NOT EXISTS (SELECT NULL FROM Cleats WHERE cleatId = @cleatId) BEGIN
+			SELECT	[message] = 'player not found',
+					[success] = CAST(0 AS BIT)
+		END ELSE BEGIN
+			UPDATE Cleats
+			SET brand    = @brand,		 
+				model	 = @model    
+				
+			WHERE cleatId = @cleatId
+			SELECT [success] = CAST(1 AS BIT)
+		END
+	END
+END TRY BEGIN CATCH
+	IF(@@TRANCOUNT > 0) ROLLBACK TRAN
+END CATCH
+IF(@@TRANCOUNT > 0) COMMIT TRAN
+END
+GO
+
+/* =====================================================================
+
+	Name:           spAddUpdateDeleteClub
+	Purpose:        Adds/Updates/Deletes a club to/from the database.
+
+======================================================================== */
+CREATE PROCEDURE spAddUpdateDeleteClub
+	@clubId              INT,      
+	@delete				 BIT = 0,
+	@managerId           INT,        
+	@cityId              INT,        
+	@age                 INT,            
+	@clubName            VARCHAR(100)
+AS BEGIN
+
+	BEGIN TRY
+		IF(@clubId = 0) BEGIN			--ADD CLUB
+			INSERT	INTO Clubs(managerId,cityId,age,clubName)
+					VALUES (@managerId,@cityId,@age,@clubName)
+					SELECT @@IDENTITY AS clubId,
+					[success] = CAST(1 AS BIT)
+
+		END ELSE IF (@delete = 1) BEGIN --delete club
+			IF NOT EXISTS (SELECT NULL FROM Clubs WHERE clubId = @clubId) BEGIN
+				SELECT [message] = 'No clubId found',
+					   [success] = CAST (0 AS BIT)
+			END ELSE BEGIN
+			
+				DELETE Clubs WHERE clubId = @clubId
+				SELECT 0 AS clubId,
+						[success] = CAST(0 AS BIT)
+			END
+	END ELSE BEGIN		--UPDATE club
+		IF NOT EXISTS (SELECT NULL FROM Clubs WHERE clubId = @clubId) BEGIN
+			SELECT	[message] = 'club not found',
+					[success] = CAST(0 AS BIT)
+		END ELSE BEGIN
+			UPDATE Clubs
+			SET    
+				managerId 	= @managerId,
+				cityId    	= @cityId   ,
+				age       	= @age      ,
+				clubName  	= @clubName 
+
+			WHERE clubId = @clubId
+			SELECT [success] = CAST(1 AS BIT)
+		END
+	END
+END TRY BEGIN CATCH
+	IF(@@TRANCOUNT > 0) ROLLBACK TRAN
+END CATCH
+IF(@@TRANCOUNT > 0) COMMIT TRAN
+END
+GO
+
+/* =====================================================================
+
+	Name:           spAddUpdateDeleteCity
+	Purpose:        Adds/Updates/Deletes a city to/from the database.
+
+======================================================================== */
+CREATE PROCEDURE spAddUpdateDeleteCity
+	@cityId              INT,      
+	@delete				 BIT = 0,
+	@cityName			 VARCHAR(50)       
+AS BEGIN
+
+	BEGIN TRY
+		IF(@cityId = 0) BEGIN			--ADD City
+			INSERT	INTO City(cityName)
+					VALUES (@cityName)
+					SELECT @@IDENTITY AS cityId,
+					[success] = CAST(1 AS BIT)
+
+		END ELSE IF (@delete = 1) BEGIN --delete City
+			IF NOT EXISTS (SELECT NULL FROM City WHERE cityId = @cityId) BEGIN
+				SELECT [message] = 'No cityId found',
+					   [success] = CAST (0 AS BIT)
+			END ELSE BEGIN
+			
+				DELETE City WHERE cityId = @cityId
+				SELECT 0 AS cityId,
+						[success] = CAST(0 AS BIT)
+			END
+	END ELSE BEGIN		--UPDATE city
+		IF NOT EXISTS (SELECT NULL FROM City WHERE cityId = @cityId) BEGIN
+			SELECT	[message] = 'city not found',
+					[success] = CAST(0 AS BIT)
+		END ELSE BEGIN
+			UPDATE City
+			SET    
+				cityName 	= @cityName
+
+			WHERE cityId = @cityId
+			SELECT [success] = CAST(1 AS BIT)
+		END
+	END
+END TRY BEGIN CATCH
+	IF(@@TRANCOUNT > 0) ROLLBACK TRAN
+END CATCH
+IF(@@TRANCOUNT > 0) COMMIT TRAN
+END
+GO
+/* =====================================================================
+
+	Name:           spAddUpdateDeleteManager
+	Purpose:        Adds/Updates/Deletes a manager to/from the database.
+
+======================================================================== */
+CREATE PROCEDURE spAddUpdateDeleteManager
+	@managerId			INT			   ,
+	@delete				BIT = 0		   ,
+	@firstName			VARCHAR(30)	   ,
+	@lastName			VARCHAR(30)	   ,
+	@nationality			VARCHAR(30),
+	@age					INT			,
+	@club				VARCHAR(40)	   ,
+	@yearsManaging		INT			   ,
+	@preferedFormation	VARCHAR(40) 
+
+
+AS BEGIN
+
+	BEGIN TRY
+		IF(@managerId = 0) BEGIN			--ADD Manager
+			INSERT	INTO Manager(firstName,lastName,nationality,age,club,yearsManaging,preferedFormation)
+					VALUES (@firstName,@lastName,@nationality,@age,@club,@yearsManaging,@preferedFormation)
+					SELECT @@IDENTITY AS managerId,
+					[success] = CAST(1 AS BIT)
+
+		END ELSE IF (@delete = 1) BEGIN --delete Manager
+			IF NOT EXISTS (SELECT NULL FROM Manager WHERE managerId = @managerId) BEGIN
+				SELECT [message] = 'No managerId found',
+					   [success] = CAST (0 AS BIT)
+			END ELSE BEGIN
+			
+				DELETE Manager WHERE managerId = @managerId
+				SELECT 0 AS managerId,
+						[success] = CAST(0 AS BIT)
+			END
+	END ELSE BEGIN		--UPDATE manager
+		IF NOT EXISTS (SELECT NULL FROM Manager WHERE managerId = @managerId) BEGIN
+			SELECT	[message] = 'manager not found',
+					[success] = CAST(0 AS BIT)
+		END ELSE BEGIN
+			UPDATE Manager
+			SET    
+				firstName = @firstName		,	
+				lastName = @lastName			,
+				nationality = @nationality	,	
+				age	= @age					,
+				club = @club					,
+				yearsManaging = @yearsManaging ,		
+				preferedFormation = @preferedFormation	
+			WHERE managerId = @managerId
+			SELECT [success] = CAST(1 AS BIT)
+		END
+	END
+END TRY BEGIN CATCH
+	IF(@@TRANCOUNT > 0) ROLLBACK TRAN
+END CATCH
+IF(@@TRANCOUNT > 0) COMMIT TRAN
+END
+GO
+
+
+
+/* =====================================================================
+
+	Name:           spGetPlayerList
+	Purpose:        Returns a list of all players
+
+======================================================================== */
 CREATE PROCEDURE spGetPlayerList
 AS BEGIN
 	SELECT *
 	FROM Players
 END 
 GO
+/* =====================================================================
 
+	Name:           spGetTopGoals
+	Purpose:        returns a list of players with the most goals in desc order
+
+======================================================================== */
 CREATE PROCEDURE spGetTopGoals
 AS BEGIN
 	SELECT p.firstName, p.lastName, s.goals
@@ -140,7 +433,250 @@ AS BEGIN
 	ORDER BY s.goals DESC
 END
 GO
+/* =====================================================================
 
+	Name:           spLeagueTable
+	Purpose:        returns a list of clubs based on points in the league
+
+======================================================================== */
+CREATE PROCEDURE spLeagueTable
+AS BEGIN
+	SELECT	c.*
+	FROM	Clubs c
+	ORDER BY c.leaguePoints DESC
+END
+GO
+/* =====================================================================
+
+	Name:           spGetClubAvgAge
+	Purpose:        Return the average age of all players in a clubs roster
+
+======================================================================== */
+CREATE PROCEDURE spGetClubAvgAge 
+	@clubId		INT
+AS BEGIN
+	SELECT	c.clubName, AVG(p.age)
+	FROM	Clubs c, Players p
+	WHERE	(p.clubId = c.clubId) AND (p.clubId = @clubId) --Joins the desired clubId to the club the players belong to.
+	GROUP BY c.clubName
+END
+GO
+
+/* =====================================================================
+
+	Name:           spCheckForPoints
+	Purpose:         League points are given by wins and draws 
+	(loss = no points). This SP will make sure that the points 
+	are properly aligned with wins and draws
+
+======================================================================== */
+CREATE PROCEDURE spCheckForPoints 
+AS BEGIN
+	SELECT	c.clubName,c.winCount,c.drawCount,c.leaguePoints, [Remaining] =
+	(c.leaguePoints - ((c.winCount *3) + (c.drawCount)))
+	
+	FROM	Clubs c
+
+END
+GO
+/* =====================================================================
+
+	Name:           spGetBudget
+	Purpose:         Takes the earnings of all players in a
+	club to see how much a club has spent on it's roster
+
+======================================================================== */
+CREATE PROCEDURE spGetBudget
+AS BEGIN
+	SELECT c.clubName, [Total Spending] = SUM(ps.salary)
+	FROM	Clubs c, PlayerStats ps, Players p
+	WHERE p.clubId = c.clubId AND p.playerId = ps.playerId
+	GROUP BY c.clubName
+END
+GO
+/* =====================================================================
+
+	Name:           spcheckForDupNum
+	Purpose:       Checks for a duplicate num
+
+======================================================================== */
+CREATE PROCEDURE spcheckForDupNum
+AS BEGIN
+	SELECT	c.clubName,
+			[PlayerCount] = COUNT(p.playerId), 
+			[UniqueNumbers] = COUNT(DISTINCT p.number),
+			[DupNum] = CASE
+							WHEN COUNT(p.playerId) > COUNT(DISTINCT p.number) then 'DUPLICATE'
+						    else 'NO DUPLICATE'
+						END
+	FROM	Clubs c,  Players p
+	WHERE p.clubId = c.clubId 
+	GROUP BY c.clubName
+END
+GO
+/* =====================================================================
+
+	Name:           spGetLocation
+	Purpose:        Gets the location of a club's city given a clubid
+
+======================================================================== */
+CREATE PROCEDURE spGetLocation
+@clubId		INT
+AS BEGIN
+	SELECT	c.cityName
+	FROM	City c, Clubs cl
+	WHERE	c.cityId = cl.cityId AND @clubId = cl.clubId
+	GROUP BY c.clubName
+END
+GO
+
+/* =====================================================================
+
+	Name:           spSortClubByAge
+	Purpose:        Sort club by age
+
+======================================================================== */
+CREATE PROCEDURE spSortClubByAge
+AS BEGIN
+	SELECT	c.*
+	FROM	Clubs c
+	ORDER BY c.age DESC
+END
+GO
+
+/* =====================================================================
+
+	Name:           spSuspend
+	Purpose:        View all players that have been suspended
+
+======================================================================== */
+CREATE PROCEDURE spSuspend
+AS BEGIN
+	SELECT	[Suspended Players] = (p.firstName + ' ' + p.lastName),ps.redCards, ps.yellowCards
+	FROM	Players p, PlayerStats ps
+	WHERE p.playerId = ps.playerStatsId AND (ps.redCards>0 OR ps.yellowCards > 5)
+END
+GO
+
+/* =====================================================================
+
+	Name:           spGetHighestSalary
+	Purpose:        Returns players that have the highest salary
+
+======================================================================== */
+CREATE PROCEDURE spGetHighestSalary
+AS BEGIN
+	SELECT	p.firstName + ' ' + p.lastName, ps.salary
+	FROM	Players p, PlayerStats ps
+	WHERE p.playerId = ps.playerStatsId 
+	ORDER BY ps.salary desc
+END
+GO
+
+
+/* =====================================================================
+
+	Name:           spGetAlmostExpired
+	Purpose:        Returns players that's contracts are about to expire
+
+======================================================================== */
+CREATE PROCEDURE spGetAlmostExpired
+AS BEGIN
+	SELECT	p.firstName + ' ' + p.lastName, ps.contractLength
+	FROM	Players p, PlayerStats ps
+	WHERE p.playerId = ps.playerStatsId AND ps.contractLength < 365
+END
+GO
+
+/* =====================================================================
+
+	Name:           spGetPopularShoe
+	Purpose:        Gets a list of the most popular shoes (ordered by desc pop)
+
+======================================================================== */
+CREATE PROCEDURE spGetPopularShoe
+AS BEGIN
+	SELECT	c.brand, c.model, [numOfShoe] = COUNT(DISTINCT c.model)
+	FROM	Cleats c
+	GROUP BY c.model, C.brand
+	ORDER BY COUNT(DISTINCT c.model) DESC
+	
+END
+GO
+
+/* =====================================================================
+
+	Name:            spGetListofPlayersCleats
+	Purpose:       Returns cleats that belongs to a player
+
+======================================================================== */
+CREATE PROCEDURE  spGetPlayersCleats
+@playerId	INT
+AS BEGIN
+	SELECT	c.*
+	FROM	Cleats c, Players p
+	WHERE	c.cleatId = p.cleatId AND p.playerId = @playerId
+	
+END
+GO
+
+
+/* =====================================================================
+
+	Name:            spGetMostExp	
+	Purpose:       Returns managers with the most experience 
+
+======================================================================== */
+CREATE PROCEDURE  spGetMostExp
+AS BEGIN
+	SELECT	[Name] = m.firstName + ' ' + m.lastName, m.yearsManaging
+	FROM	Manager m	
+	ORDER BY m.yearsManaging DESC	
+	
+END
+GO
+
+
+/* =====================================================================
+
+	Name:            spGetMostExp	
+	Purpose:       Returns managers with the most experience 
+
+======================================================================== */
+CREATE PROCEDURE  spGetMostExp
+AS BEGIN
+	SELECT	[Name] = m.firstName + ' ' + m.lastName, m.yearsManaging
+	FROM	Manager m	
+	ORDER BY m.yearsManaging DESC	
+	
+END
+GO
+
+/* =====================================================================
+
+	Name:            spGetMostExp	
+	Purpose:       Returns managers with the most experience 
+
+======================================================================== */
+CREATE PROCEDURE  spGetPopForm
+AS BEGIN
+	SELECT	m.preferedFormation
+	FROM	Manager m	
+	GROUP BY m.preferedFormation
+	ORDER BY count(DISTINCT m.preferedFormation) DESC
+	
+	
+END
+GO
+
+
+
+/* =====================================================================
+
+	Name:           spGetTopAssists
+	Purpose:        returns a list of players with the most assists in desc order
+
+======================================================================== */
 CREATE PROCEDURE spGetTopAssists
 AS BEGIN
 	SELECT p.firstName, p.lastName, s.assists
@@ -149,7 +685,12 @@ AS BEGIN
 	ORDER BY s.assists DESC
 END
 GO
+/* =====================================================================
 
+	Name:           spGetMostReds
+	Purpose:        returns a list of players with the most red cards in desc order
+
+======================================================================== */
 CREATE PROCEDURE spGetMostReds
 AS BEGIN
 	SELECT p.firstName, p.lastName, s.redCards
@@ -159,12 +700,19 @@ AS BEGIN
 END
 GO
 
+/* =====================================================================
+
+	Name:           spGetListOfCleats
+	Purpose:        returns a list of Cleats
+
+======================================================================== */
 CREATE PROCEDURE spGetListOfCleats
 AS BEGIN
 	SELECT *
 	FROM Cleats c
 END
 GO
+
 
 
 --============================================================= CREATE TRIGGERS
