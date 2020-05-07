@@ -88,7 +88,38 @@ GO
 -- SELECT * FROM Manager
 
 --============================================================= CREATE VIEWS
+-- Views based on grouping the league's entire set of players based on their nation
+-- England
+GO
+CREATE VIEW [English Players] AS 
+SELECT firstName, lastName
+FROM Players
+WHERE nationality = 'England';
+GO
 
+-- Brazil
+GO
+CREATE VIEW [Brazil Players] AS
+SELECT firstName, lastName
+FROM Players
+WHERE nationality = 'Brazil';
+GO
+
+-- France
+GO
+CREATE VIEW [France Players] AS
+SELECT firstName, lastName
+FROM Players
+WHERE nationality = 'France';
+GO
+
+-- other (this is for players that are from "rare" countries within the clubs)
+GO
+CREATE VIEW [Other Nation Players] AS
+SELECT firstName, lastName, nationality
+FROM Players
+WHERE nationality != 'England' OR nationality != 'Brazil' OR nationality != 'France';
+GO
 
 --============================================================= CREATE STORED PROCEDURES
 
