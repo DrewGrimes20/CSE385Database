@@ -92,6 +92,7 @@ GO
 -- SELECT * FROM City
 -- SELECT * FROM Manager
 GO
+
 --============================================================= CREATE VIEWS
 -- Views based on grouping the league's entire set of players based on their nation
 -- England
@@ -118,12 +119,20 @@ FROM Players
 WHERE nationality = 'France';
 GO
 
--- other (this is for players that are from "rare" countries within the clubs)
+-- A list of aging players (usefull for clubs wanting to make a younger roster)
 GO
-CREATE VIEW [Other Nation Players] AS
-SELECT firstName, lastName, nationality
+CREATE VIEW [Aging Players] AS
+SELECT firstName, lastName, position ,age
 FROM Players
-WHERE nationality != 'England' OR nationality != 'Brazil' OR nationality != 'France';
+WHERE age > 30;
+GO
+
+-- A list of young players (usefull for clubs that want to find a potential star)
+GO
+CREATE VIEW [Prospect Players] AS
+SELECT firstName, lastName, position ,age
+FROM Players
+WHERE age < 23;
 GO
 
 --============================================================= CREATE STORED PROCEDURES
