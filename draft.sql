@@ -2,7 +2,12 @@
 
 Group Members: Alex Chirokov
 			   Andrew Grimes
-Database Description: Database for the premier league (Soccer)
+Database Description:	Database for the premier league (Soccer) that stores
+						Players, player stats, managers (coaches), clubs,
+						club information, and league details.
+						This can be used to keep track of stats throughout 
+						the season and be used as a recap at the end of the
+						season (see who has gotten the most wins, losses, goals, etc.).
 
 */
 USE master;
@@ -455,7 +460,7 @@ GO
 CREATE PROCEDURE spGetClubAvgAge 
 	@clubId		INT
 AS BEGIN
-	SELECT	c.clubName, AVG(p.age)
+	SELECT	c.clubName, [AveragePlayerAge] = AVG(p.age)
 	FROM	Clubs c, Players p
 	WHERE	(p.clubId = c.clubId) AND (p.clubId = @clubId) --Joins the desired clubId to the club the players belong to.
 	GROUP BY c.clubName
@@ -520,13 +525,14 @@ GO
 	Purpose:        Gets the location of a club's city given a clubid
 
 ======================================================================== */
+
 CREATE PROCEDURE spGetLocation
 @clubId		INT
 AS BEGIN
-	SELECT	c.cityName
+	SELECT	cl.clubName,c.cityName
 	FROM	City c, Clubs cl
 	WHERE	c.cityId = cl.cityId AND @clubId = cl.clubId
-	GROUP BY c.clubName
+	GROUP BY c.cityName, cl.clubName
 END
 GO
 
@@ -594,12 +600,13 @@ GO
 	Purpose:        Gets a list of the most popular shoes (ordered by desc pop)
 
 ======================================================================== */
+
 CREATE PROCEDURE spGetPopularShoe
 AS BEGIN
-	SELECT	c.brand, c.model, [numOfShoe] = COUNT(DISTINCT c.model)
+	SELECT	c.brand, c.model, [numOfShoe] = COUNT(c.model)
 	FROM	Cleats c
 	GROUP BY c.model, C.brand
-	ORDER BY COUNT(DISTINCT c.model) DESC
+	ORDER BY numOfShoe DESC
 	
 END
 GO
@@ -639,31 +646,18 @@ GO
 
 /* =====================================================================
 
-	Name:            spGetMostExp	
-	Purpose:       Returns managers with the most experience 
+	Name:            spGetPopForm	
+	Purpose:       Returns most popular formation
 
 ======================================================================== */
-CREATE PROCEDURE  spGetMostExp
-AS BEGIN
-	SELECT	[Name] = m.firstName + ' ' + m.lastName, m.yearsManaging
-	FROM	Manager m	
-	ORDER BY m.yearsManaging DESC	
-	
-END
-GO
-
-/* =====================================================================
-
-	Name:            spGetMostExp	
-	Purpose:       Returns managers with the most experience 
-
-======================================================================== */
+--drop procedure spGetPopForm
 CREATE PROCEDURE  spGetPopForm
 AS BEGIN
-	SELECT	m.preferedFormation
+	
+	SELECT	m.preferedFormation, [FormationCount] = COUNT(m.preferedFormation) 
 	FROM	Manager m	
 	GROUP BY m.preferedFormation
-	ORDER BY count(DISTINCT m.preferedFormation) DESC
+	ORDER BY [FormationCount] DESC
 	
 	
 END
@@ -716,10 +710,32 @@ GO
 
 
 --============================================================= CREATE TRIGGERS
+DROP TRIGGER IF EXISTS trgPlayers_INSERT
 
+GO
+
+CREATE TRIGGER trgPlayers_INSERT ON Players
+	AFTER INSERT
+AS BEGIN
+	SELECT i.playerId, [Name] = i.firstName + ' ' + i.lastName
+	FROM inserted i
+END
+GO
+
+DROP TRIGGER IF EXISTS trgManagers_INSERT
+
+GO
+
+CREATE TRIGGER trgPlayers_INSERT ON Manager
+	AFTER INSERT
+AS BEGIN
+	SELECT i.managerId, [Name] = i.firstName + ' ' + i.lastName
+	FROM inserted i
+END
+GO
+	
 
 --============================================================= CREATE FUNCTIONS
-
 
 
 --============================================================= TABLE POPULATION
@@ -1357,3 +1373,114 @@ INSERT INTO PlayerStats (playerId) VALUES
 	(218),
 	(219),
 	(220)
+
+--============================================================= TEST CALLS TO STORED PROCEDURES
+
+--========================
+EXEC spGetListOfCleats
+
+--========================
+UPDATE PlayerStats 
+SET redCards = 3
+WHERE playerId = 4 OR playerId = 5
+
+UPDATE PlayerStats 
+SET redCards = 5
+WHERE playerId = 6 
+
+EXEC
+spGetMostReds
+
+--=========================
+UPDATE PlayerStats 
+SET assists = 3
+WHERE playerId = 4 OR playerId = 5
+
+UPDATE PlayerStats 
+SET assists = 5
+WHERE playerId = 6 
+
+EXEC spGetTopAssists
+
+--=========================
+EXEC spGetPopForm
+
+--=========================
+UPDATE PlayerStats 
+SET salary = 300000
+WHERE playerId = 4 OR playerId = 5
+
+UPDATE PlayerStats 
+SET salary = 500000
+WHERE playerId = 50
+
+EXEC spGetBudget --==============Two teams have been updated with a dummy salary values for players.
+
+--==========================
+UPDATE PlayerStats 
+SET salary = 900000
+WHERE playerId = 8 OR playerId = 9
+
+UPDATE PlayerStats 
+SET salary = 1000000
+WHERE playerId = 22
+
+EXEC spGetHighestSalary
+--==========================
+EXEC spGetClubAvgAge 1
+EXEC spGetClubAvgAge 2
+EXEC spGetClubAvgAge 3
+EXEC spGetClubAvgAge 4
+EXEC spGetClubAvgAge 5
+EXEC spGetClubAvgAge 6
+
+--==========================
+UPDATE Clubs
+SET leaguePoints = 9,
+	winCount = 3
+WHERE clubId = 1
+
+UPDATE Clubs
+SET leaguePoints = 7,
+	winCount = 2,
+	drawCount = 1
+WHERE clubId = 2
+
+UPDATE Clubs
+SET leaguePoints = 4,
+	winCount = 1,
+	drawCount =1
+WHERE clubId = 3
+
+EXEC spLeagueTable
+
+--=====================
+exec spGetMostExp
+
+--=====================
+EXEC spGetPlayerList
+
+--=====================
+EXEC spGetPlayersCleats 1
+EXEC spGetPlayersCleats 44
+EXEC spGetPlayersCleats 66
+
+--=====================
+EXEC spGetLocation 1
+--=====================
+EXEC spSortClubByAge
+--=====================
+EXEC spcheckForDupNum --TOTTENHAM INTENTIONALLY HAS A DUPLICATE NUMBER
+--=====================
+EXEC spCheckForPoints --The "remaining" column should be 0 if the points are correct (MAKE SURE TO RUN THE PRIOR UPDATE FUNCTIONS).
+--=====================
+UPDATE PlayerStats 
+SET goals = 12
+WHERE playerId = 8 OR playerId = 9
+
+UPDATE PlayerStats 
+SET goals = 14
+WHERE playerId = 22
+
+EXEC spGetTopGoals
+--======================
